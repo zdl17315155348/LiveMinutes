@@ -1,0 +1,53 @@
+# Credentials (keep the safe template)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local recordings, transcripts, reports and downloaded models
+/data/
+/models/
+/recordings/
+/local_test/
+.minutes_cache/
+minutes_runs/
+*.wav
+*.mp3
+*.m4a
+*.pcm
+*.onnx
+*.part
+
+# Environments, Python/build artifacts and test caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Download caches and temporary tool installs
+tools/
+.npm-cache/
+node_modules/
+
+# Logs, temporary files and machine-specific settings
+*.log
+*.tmp
+*.bak
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local development notes and verification scripts (not part of the runtime release)
+/docs/
+/tests/

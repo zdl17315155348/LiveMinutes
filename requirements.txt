@@ -1,0 +1,7 @@
+sherpa-onnx==2.0.1
+numpy==2.4.6
+websockets==15.0.1
+python-dotenv==1.2.1
+PyAudioWPatch==0.2.12.9; sys_platform == 'win32'
+pywebrtc-audio==0.2.0
+soxr==1.0.0
