@@ -84,6 +84,8 @@ class Demo:
         controls.pack(fill='x', pady=12)
         self.record_button = ttk.Button(controls, text='开始录音（云端）', command=lambda: self.start(live=True))
         self.record_button.pack(side='left', padx=(0, 12))
+        self.settings_button = ttk.Button(controls, text='API 设置', command=self.open_settings)
+        self.settings_button.pack(side='right')
         self.start_button = ttk.Button(controls, text='测试所选音频文件', command=self.start)
         self.start_button.pack(side='left')
         self.stop_button = ttk.Button(controls, text='结束并保存', command=self.stop_recording, state='disabled')
@@ -126,6 +128,12 @@ class Demo:
         path = filedialog.askopenfilename(filetypes=[('PCM WAV', '*.wav')])
         if path:
             self.path.set(path)
+
+    def open_settings(self):
+        if self.running or self.summary_running:
+            return
+        from .settings import show_settings
+        show_settings(self.root, lambda: self.minutes_status.set('API 配置已保存，可开始录音或重试生成纪要。'))
 
     def change_meeting_mode(self, event=None):
         if self.running or self.summary_running:
@@ -404,5 +412,8 @@ class Demo:
 
 if __name__ == '__main__':
     window = tk.Tk()
-    Demo(window)
+    app = Demo(window)
+    from .settings import needs_setup
+    if needs_setup():
+        window.after(200, app.open_settings)
     window.mainloop()

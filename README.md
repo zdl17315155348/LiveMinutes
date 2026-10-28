@@ -11,24 +11,29 @@ Windows 本地会议助手，使用豆包实时语音识别和 DeepSeek 生成�
 
 ## 使用方法
 
-### 1. 安装
+### 1. 下载并启动
 
 需要 Windows 10/11、Python 3.11（包含 Tcl/Tk）和网络连接。
 
-下载或克隆本仓库，在项目目录运行：
+下载或克隆本仓库：
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-Copy-Item .env.example .env
+git clone https://github.com/zdl17315155348/LiveMinutes.git
+cd LiveMinutes
 ```
+
+双击 **`start_meeting.bat`**。首次会自动创建运行环境并安装依赖，需要联网；后续直接启动。依赖清单变化时会自动更新，安装失败后可检查网络再双击重试。
+
+没有安装Python时，启动器会提示安装[64位Python 3.11](https://www.python.org/downloads/windows/)，安装时勾选“Add python.exe to PATH”。当前不是免安装的独立exe。
 
 ### 2. 填写 API Key
 
 - **豆包语音识别**：进入[火山引擎语音控制台](https://console.volcengine.com/speech/new/experience/asr)，开通“豆包流式语音识别模型 2.0 小时版”，在控制台的 API Key 管理中获取密钥。
 - **DeepSeek**：在 [DeepSeek 开放平台](https://platform.deepseek.com/)获取 API Key。
 
-用文本编辑器打开**项目根目录的 `.env`**，填写等号后的值并保存：
+首次启动会弹出 **API 设置**，填写并保存即可。之后也可以点击主界面的“API 设置”。豆包Key必填，DeepSeek Key可稍后填写。
+
+程序会自动将配置保存到**项目根目录的 `.env`**；也支持用文本编辑器手动填写：
 
 ```dotenv
 VOLCENGINE_ASR_API_KEY=填写你的豆包APIKey
