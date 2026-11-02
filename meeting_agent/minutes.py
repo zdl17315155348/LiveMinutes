@@ -98,7 +98,7 @@ def save_minutes(text):
     timestamp = datetime.now(timezone(timedelta(hours=8)))
     for offset in range(86400):
         # Windows forbids ASCII ':', so use the full-width colon U+FF1A.
-        name = (timestamp + timedelta(seconds=offset)).strftime('%y%m%d+%H：%M：%S.md')
+        name = (timestamp + timedelta(seconds=offset)).strftime('%Y%m%dat%H%M%S.md')
         path = MINUTES_DIR / name
         try:
             file = path.open('x', encoding='utf-8')

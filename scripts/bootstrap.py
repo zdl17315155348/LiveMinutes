@@ -9,7 +9,7 @@ import sys
 import venv
 
 ROOT = Path(__file__).resolve().parent.parent
-MODULES = 'import numpy, sherpa_onnx, websockets, dotenv, pyaudiowpatch, pywebrtc_audio, soxr, tkinter'
+MODULES = 'import numpy, sherpa_onnx, websockets, dotenv, pyaudiowpatch, pywebrtc_audio, soxr, tkinter, imageio_ffmpeg'
 
 def setup(check_only=False):
     if sys.platform != 'win32':

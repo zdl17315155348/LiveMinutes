@@ -10,6 +10,12 @@ from tkinter import filedialog, ttk
 
 from .paths import ROOT
 
+
+def display_transcript(text):
+    """Bound Tk's logical line length; exported transcription stays unchanged."""
+    return '\n'.join('\n'.join(line[i:i+160] for i in range(0, len(line), 160))
+                     for line in text.split('\n'))
+
 class Demo:
     def __init__(self, root, backend='cloud', auto_minutes=True):
         self.root = root
@@ -22,6 +28,7 @@ class Demo:
         self.summary_stop = threading.Event()
         self.latest_text = ''
         self.latest_output = None
+        self.imported_audio = False
         self.auto_minutes = tk.BooleanVar(value=auto_minutes)
         self.backend = tk.StringVar(value='云端 · 豆包二遍识别' if backend == 'cloud' else '本地 · CPU 对照')
         from .ui_theme import BG, INK, MUTED, BLUE, TEAL, FONT, Card, ActionButton, Waveform, Selection, SlimScrollbar, setup_theme
@@ -55,7 +62,7 @@ class Demo:
         recording_controls.pack(side='bottom', fill='x')
         tk.Label(recording_controls, text='录音控制', bg='white', fg=MUTED,
                  font=(FONT, 10)).pack(side='left')
-        self.stop_button = ActionButton(recording_controls, text='■  结束录音',
+        self.stop_button = ActionButton(recording_controls, text='■  结束录音并生成会议纪要',
                                         command=self.stop_recording, fill='#DC4264',
                                         foreground='white', state='disabled')
         self.stop_button.pack(side='right', padx=(12, 0))
@@ -138,6 +145,8 @@ class Demo:
         links.grid(row=2, column=0, sticky='ew', pady=(10, 0))
         self.import_button = ActionButton(links, text='↗  导入已有转写', command=self.import_transcript, fill=BG)
         self.import_button.pack(fill='x')
+        self.audio_import_button = ActionButton(links, text='导入音频生成纪要', command=self.import_audio, fill=BG)
+        self.audio_import_button.pack(fill='x')
         ActionButton(links, text='▥  音频文件测试', command=self.open_tools, fill=BG).pack(fill='x')
         right = tk.Frame(workspace, bg=BG)
         right.grid(row=0, column=1, sticky='nsew')
@@ -258,13 +267,14 @@ class Demo:
 
     def animate(self):
         busy = self.running or self.summary_running
+        self.audio_import_button.configure(state='disabled' if busy else 'normal')
         for button in self.mode_buttons:
             button.configure(state='disabled' if busy else 'normal')
         self.settings_button.configure(state='disabled' if busy else 'normal')
         stopping = self.running and self.stop.is_set()
         self.session_state.set('正在结束…' if stopping else ('正在录音' if self.capture_active and self.running else
                                ('正在转写' if self.running else ('正在生成纪要' if self.summary_running else '准备开始'))))
-        stop_label = '■  结束录音并生成纪要' if self.auto_minutes.get() and getattr(self, 'is_live', False) else '■  结束录音并保存'
+        stop_label = '■  结束录音并生成会议纪要'
         self.stop_button.configure(text=stop_label)
         seconds = int(self.elapsed_seconds)
         self.timer.set(f'{seconds//3600:02d}:{seconds//60%60:02d}:{seconds%60:02d}')
@@ -316,15 +326,19 @@ class Demo:
         self.device_card.configure(height=430 if online else 320)
 
     def set_text(self, widget, text, append=False):
+        if not append and getattr(widget, '_last_text', None) == text:
+            return
         at_bottom = widget.yview()[1] >= .98
         widget.configure(state='normal')
         widget.tag_remove('empty', '1.0', 'end')
         if not append:
-            previous = widget.get('1.0', 'end-1c')
+            previous = getattr(widget, '_last_text', '')
             same = len(os.path.commonprefix([previous, text]))
             widget.delete(f'1.0+{same}c', 'end')
             widget.insert('end', text[same:])
+            widget._last_text = text
         else:
+            widget._last_text = None
             widget.insert('end', text)
         if widget == self.minutes_text:
             widget.tag_configure('heading', foreground='#3933D8', font=('Microsoft YaHei UI', 16, 'bold'), spacing1=12, spacing3=10)
@@ -345,7 +359,17 @@ class Demo:
         self.stop_button.configure(state='disabled')
         self.status.set('正在停止采集并处理最后一段音频…')
 
-    def start(self, live=False):
+    def import_audio(self):
+        if self.running or self.summary_running:
+            return
+        path = filedialog.askopenfilename(title='导入音频生成会议纪要', filetypes=[
+            ('音频文件', '*.m4a *.wav *.mp3 *.aac *.flac *.ogg'), ('所有文件', '*.*')])
+        if path:
+            self.path.set(path)
+            self.backend.set('云端 · 豆包二遍识别')
+            self.start(imported=True)
+
+    def start(self, live=False, imported=False):
         if self.running or self.summary_running:
             return
         path = Path(self.path.get()).expanduser()
@@ -357,6 +381,7 @@ class Demo:
             if not self.online_ready:
                 return
         self.running = True
+        self.imported_audio = imported
         self.capture_active = False
         self.elapsed_seconds = 0
         self.wave_target = 0
@@ -400,6 +425,12 @@ class Demo:
                     report = run_microphone(self.selected_device, self.events.put, self.stop)
                 self.events.put({'kind': 'done', 'report': report, 'path': report['report_path']})
                 return
+            if self.imported_audio:
+                from .audio_import import prepare_audio
+                self.events.put({'kind': 'import_progress', 'message': '正在准备音频，转换为识别格式…'})
+                path = prepare_audio(path, self.stop)
+                if self.stop.is_set():
+                    raise RuntimeError('已取消音频导入。')
             if self.selected_backend == 'cloud':
                 from .cloud_asr import run_cloud
                 report = run_cloud(path, self.events.put, self.stop)
@@ -466,13 +497,18 @@ class Demo:
         threading.Thread(target=work, daemon=True).start()
 
     def poll(self):
-        while True:
+        deadline = time.perf_counter() + .025
+        processed = 0
+        while processed < 32 and time.perf_counter() < deadline:
             try:
                 event = self.events.get_nowait()
             except queue.Empty:
                 break
             kind = event['kind']
-            if kind == 'minutes_progress':
+            processed += 1
+            if kind == 'import_progress':
+                self.status.set(event['message'])
+            elif kind == 'minutes_progress':
                 self.minutes_status.set(event['message'])
             elif kind in ('minutes_done', 'minutes_error'):
                 self.summary_running = False
@@ -498,7 +534,7 @@ class Demo:
             elif kind == 'recording':
                 self.capture_active = True
                 self.connection.set('●  识别已连接')
-                self.status.set('录音中，请讲话；点击“结束并保存”停止。')
+                self.status.set('录音中，请讲话；点击“结束录音并生成会议纪要”结束。')
             elif kind == 'level':
                 self.level['value'] = max(0, min(60, event['dbfs'] + 60))
                 self.wave_target = max(0, min(1, (event['dbfs']+60)/60))
@@ -508,7 +544,7 @@ class Demo:
             elif kind == 'live_progress':
                 self.elapsed_seconds = event['position_s']
                 seconds = int(event['position_s'])
-                self.status.set(f'录音中 · {seconds // 60:02d}:{seconds % 60:02d} · 点击“结束并保存”停止')
+                self.status.set(f'录音中 · {seconds // 60:02d}:{seconds % 60:02d} · 点击“结束录音并生成会议纪要”结束')
             elif kind == 'finishing':
                 self.capture_active = False
                 self.connection.set('等待最终确认…')
@@ -518,7 +554,7 @@ class Demo:
                 self.progress['value'] = 100 * event['position_s'] / event['duration_s']
                 self.status.set(f"已输入 {event['position_s']:.1f} / {event['duration_s']:.1f} 秒")
             elif kind == 'text':
-                self.set_text(self.transcript, event['text'])
+                self.set_text(self.transcript, display_transcript(event['text']))
                 # Only the unconfirmed tail is gray; preserve unchanged characters.
                 self.transcript.tag_remove('pending', '1.0', 'end')
                 if self.selected_backend == 'cloud' and not event['final']:
@@ -531,7 +567,8 @@ class Demo:
                         if index < 0:
                             break
                         cursor = index + len(text)
-                    self.transcript.tag_add('pending', f'1.0+{cursor}c', 'end')
+                    display_cursor = len(display_transcript(event['text'][:cursor]))
+                    self.transcript.tag_add('pending', f'1.0+{display_cursor}c', 'end')
                 tag = '结束结果' if event['final'] else '中间结果'
                 self.set_text(self.log, f"{event['elapsed_s']:.2f}s · {tag} · {event['text'][-160:]}\n", append=True)
                 self.log.configure(state='normal')
@@ -573,7 +610,7 @@ class Demo:
                     self.latest_output = Path(event['path']).resolve().parent
                     if self.latest_text.strip():
                         self.summary_button.configure(state='normal')
-                        if self.is_live and self.auto_minutes.get() and not self.closing and report.get('completed', True):
+                        if (self.imported_audio or (self.is_live and self.auto_minutes.get())) and not self.closing and not report.get('cancelled') and report.get('completed', True):
                             self.generate_current()
                         else:
                             self.minutes_status.set('转写已保存，可点击“生成/重试纪要”。')
@@ -584,7 +621,7 @@ class Demo:
                 self.root.after_cancel(self.animation_job)
             self.root.destroy()
             return
-        self.poll_job = self.root.after(100, self.poll)
+        self.poll_job = self.root.after(10 if not self.events.empty() else 100, self.poll)
 
     def close(self):
         self.closing = True
