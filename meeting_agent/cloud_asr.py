@@ -198,7 +198,7 @@ async def recognize(path, on_event=None, stop_event=None):
                        'partial_updates_before_audio_end': sum(bool(e['text']) and not e['final'] and e['audio_supplied_s'] < frames / 16000 for e in events),
                        'finalization_wait_s': time.perf_counter() - last_send if last_send else None})
         output = ROOT / 'data' / 'test-output'
-        output.mkdir(exist_ok=True)
+        output.mkdir(parents=True, exist_ok=True)
         name = output / ('cloud_' + time.strftime('%Y%m%d_%H%M%S') + f'_{time.time_ns() % 1000000000:09d}')
         name.with_suffix('.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
         name.with_suffix('.txt').write_text(transcript, encoding='utf-8')

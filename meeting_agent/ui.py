@@ -8,7 +8,7 @@ import time
 import tkinter as tk
 from tkinter import filedialog, ttk
 
-from .paths import ROOT
+from .paths import ROOT, ASSETS_DIR
 
 
 def display_transcript(text):
@@ -34,6 +34,11 @@ class Demo:
         from .ui_theme import BG, INK, MUTED, BLUE, TEAL, FONT, Card, ActionButton, Waveform, Selection, SlimScrollbar, setup_theme
         setup_theme(root)
         root.title('LiveMinutes · 会议记录助手')
+        self.app_icon = None
+        icon_path = ASSETS_DIR / 'liveminutes.png'
+        if icon_path.is_file():
+            self.app_icon = tk.PhotoImage(file=str(icon_path))
+            root.iconphoto(True, self.app_icon)
         root.geometry('1240x850')
         root.minsize(1040, 780)
         self.timer = tk.StringVar(value='00:00:00')
@@ -51,7 +56,8 @@ class Demo:
         self.poll_job = None
         header = tk.Frame(root, bg='white', padx=28, pady=14)
         header.pack(fill='x')
-        tk.Label(header, text='▥', bg='white', fg=BLUE, font=(FONT, 25, 'bold')).pack(side='left', padx=(0, 12))
+        self.header_icon = self.app_icon.subsample(8, 8) if self.app_icon else None
+        tk.Label(header, image=self.header_icon, bg='white').pack(side='left', padx=(0, 12))
         brand = tk.Frame(header, bg='white')
         brand.pack(side='left')
         tk.Label(brand, text='LiveMinutes', bg='white', fg=INK, font=(FONT, 15, 'bold')).pack(anchor='w')

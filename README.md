@@ -10,6 +10,10 @@ Windows 会议助手：豆包实时转写，DeepSeek 生成会议纪要。
 
 ## 使用
 
+便携版：解压完整的 `LiveMinutes-Windows.zip`，双击 `LiveMinutes.exe`，无需安装 Python。首次在“设置”填写 API Key。请保留同目录的 `_internal` 文件夹；纪要输出到 exe 所在目录的 `data/minutes/`。
+
+源码运行：
+
 需要 Windows 10/11、[64位 Python 3.11](https://www.python.org/downloads/windows/)和网络连接。安装 Python 时勾选 **Add python.exe to PATH**。
 
 ```powershell
