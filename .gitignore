@@ -51,3 +51,7 @@ Desktop.ini
 # Local development notes and verification scripts (not part of the runtime release)
 /docs/
 /tests/
+
+/LiveMinutes.exe
+
+/_internal/

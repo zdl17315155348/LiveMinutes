@@ -55,6 +55,7 @@ class Demo:
         self.animation_job = None
         self.poll_job = None
         header = tk.Frame(root, bg='white', padx=28, pady=14)
+        self.header = header
         header.pack(fill='x')
         self.header_icon = self.app_icon.subsample(8, 8) if self.app_icon else None
         tk.Label(header, image=self.header_icon, bg='white').pack(side='left', padx=(0, 12))
@@ -65,6 +66,7 @@ class Demo:
         self.settings_button = ttk.Button(header, text='⚙  设置', command=self.open_settings)
         self.settings_button.pack(side='right')
         recording_controls = tk.Frame(root, bg='white', padx=24, pady=12)
+        self.recording_controls = recording_controls
         recording_controls.pack(side='bottom', fill='x')
         tk.Label(recording_controls, text='录音控制', bg='white', fg=MUTED,
                  font=(FONT, 10)).pack(side='left')
@@ -80,40 +82,35 @@ class Demo:
         workspace.pack(fill='both', expand=True)
         workspace.columnconfigure(1, weight=1)
         workspace.rowconfigure(0, weight=1)
-        sidebar = tk.Frame(workspace, bg=BG, width=310)
-        sidebar.grid(row=0, column=0, sticky='ns', padx=(0, 20))
-        sidebar.pack_propagate(False)
-        side_canvas = tk.Canvas(sidebar, bg=BG, width=300, highlightthickness=0)
-        side_scroll = SlimScrollbar(sidebar, command=side_canvas.yview)
-        side_canvas.configure(yscrollcommand=side_scroll.set)
-        side_canvas.pack(side='left', fill='both', expand=True)
-        left = tk.Frame(side_canvas, bg=BG, width=300)
-        side_window = side_canvas.create_window(0, 0, window=left, anchor='nw', width=300)
-        def resize_sidebar(event=None):
-            side_canvas.configure(scrollregion=side_canvas.bbox('all'))
-            if left.winfo_reqheight() > side_canvas.winfo_height():
-                side_scroll.pack(side='right', fill='y')
-            else:
-                side_scroll.pack_forget()
-                side_canvas.yview_moveto(0)
-        left.bind('<Configure>', resize_sidebar)
-        side_canvas.bind('<Configure>', lambda e: (side_canvas.itemconfigure(side_window, width=e.width), resize_sidebar()))
+        left = tk.Frame(workspace, bg=BG, width=300)
+        left.grid(row=0, column=0, sticky='nsew', padx=(0, 20))
+        left.grid_propagate(False)
+        self.sidebar = left
         left.columnconfigure(0, weight=1)
-        left.rowconfigure(3, weight=1)
-        recorder = Card(left, color=BLUE, signature=True, height=210)
-        recorder.grid(row=0, column=0, sticky='ew', pady=(0, 14))
+        left.rowconfigure(0, weight=1, minsize=145)
+        recorder = Card(left, color=BLUE, signature=True, height=135, padding=16)
+        recorder.grid(row=0, column=0, sticky='nsew', pady=(0, 12))
         tk.Label(recorder.body, textvariable=self.session_state, bg=BLUE, fg='white', font=(FONT, 12)).pack(anchor='w')
-        tk.Label(recorder.body, textvariable=self.timer, bg=BLUE, fg='white', font=('Segoe UI', 34, 'bold')).pack(anchor='w', pady=(8, 0))
+        tk.Label(recorder.body, textvariable=self.timer, bg=BLUE, fg='white', font=('Segoe UI', 26, 'bold')).pack(anchor='w', pady=(8, 0))
         self.waveform = Waveform(recorder.body)
-        self.waveform.pack(fill='x', pady=(0, 8))
-        settings_card = Card(left, height=320, padding=20)
+        self.waveform.configure(height=34)
+        self.waveform.pack(fill='x')
+        def fit_waveform(event):
+            labels = [child for child in recorder.body.winfo_children() if isinstance(child, tk.Label)]
+            required = sum(child.winfo_reqheight() for child in labels) + 8 + 34
+            if event.height >= required:
+                self.waveform.pack(fill='x')
+            else:
+                self.waveform.pack_forget()
+        recorder.body.bind('<Configure>', fit_waveform)
+        settings_card = Card(left, height=240, padding=16)
         settings_card.grid(row=1, column=0, sticky='ew')
         self.device_card = settings_card
         body = settings_card.body
-        tk.Label(body, text='录音设置', bg='white', fg=INK, font=(FONT, 14, 'bold')).pack(anchor='w', pady=(0, 12))
+        tk.Label(body, text='录音设置', bg='white', fg=INK, font=(FONT, 14, 'bold')).pack(anchor='w', pady=(0, 6))
         self.meeting_mode = tk.StringVar(value='线下会议（麦克风）')
         mode_row = tk.Frame(body, bg='#F2F3F8')
-        mode_row.pack(fill='x', pady=(0, 12))
+        mode_row.pack(fill='x', pady=(0, 6))
         self.mode_buttons = []
         for label, value in [('线下会议', '线下会议（麦克风）'), ('线上会议', '线上会议（麦克风＋系统声音）')]:
             button = Selection(mode_row, text=label, value=value, variable=self.meeting_mode,
@@ -132,7 +129,7 @@ class Demo:
         self.mic_choice.current(0)
         self.mic_choice.pack(fill='x')
         self.level = ttk.Progressbar(body, maximum=60)
-        self.level.pack(fill='x', pady=(14, 5))
+        self.level.pack(fill='x', pady=(8, 4))
         tk.Label(body, textvariable=self.source_levels, bg='white', fg=MUTED, font=(FONT, 8), wraplength=250, justify='left').pack(anchor='w')
         self.offline_microphones = list(self.microphones)
         self.online_ready = False
@@ -146,14 +143,16 @@ class Demo:
         self.echo_checkbox = Selection(self.system_row, text='抑制外放回声', variable=self.echo_enabled, state='disabled', width=250)
         self.echo_checkbox.pack(anchor='w')
         self.auto_checkbox = Selection(body, text='结束后自动生成纪要', variable=self.auto_minutes, width=250)
-        self.auto_checkbox.pack(anchor='w', pady=(10, 0))
+        # Ending a recording always generates minutes in the simplified UI.
+        self.auto_minutes.set(True)
         links = tk.Frame(left, bg=BG)
         links.grid(row=2, column=0, sticky='ew', pady=(10, 0))
         self.import_button = ActionButton(links, text='↗  导入已有转写', command=self.import_transcript, fill=BG)
         self.import_button.pack(fill='x')
         self.audio_import_button = ActionButton(links, text='导入音频生成纪要', command=self.import_audio, fill=BG)
         self.audio_import_button.pack(fill='x')
-        ActionButton(links, text='▥  音频文件测试', command=self.open_tools, fill=BG).pack(fill='x')
+        for button in (self.import_button, self.audio_import_button):
+            button.configure(height=36)
         right = tk.Frame(workspace, bg=BG)
         right.grid(row=0, column=1, sticky='nsew')
         tk.Label(right, text='当前会议', bg=BG, fg=INK, font=(FONT, 26, 'bold')).pack(anchor='w')
@@ -198,7 +197,7 @@ class Demo:
                              selectbackground='#DFDCFF', selectforeground=INK, insertbackground=BLUE)
             scrollbar = SlimScrollbar(text_row, command=widget.yview)
             widget.configure(yscrollcommand=scrollbar.set)
-            scrollbar.pack(side='right', fill='y')
+            # Reading supports the mouse wheel without a visible scrollbar.
             widget.pack(fill='both', expand=True)
             setattr(self, attr, widget)
             if attr == 'transcript':
@@ -218,31 +217,16 @@ class Demo:
         self.status_label.pack(fill='x')
         right.bind('<Configure>', lambda e: [label.configure(wraplength=max(220, e.width-40))
                                              for label in (self.minutes_status_label, self.status_label)])
-        self.tools = tk.Toplevel(root)
-        self.tools.withdraw()
-        self.tools.title('LiveMinutes · 音频文件测试')
-        self.tools.geometry('720x520')
-        self.tools.protocol('WM_DELETE_WINDOW', self.tools.withdraw)
-        tool_frame = ttk.Frame(self.tools, padding=24)
-        tool_frame.pack(fill='both', expand=True)
-        ttk.Label(tool_frame, text='音频文件测试', font=(FONT, 17, 'bold')).pack(anchor='w', pady=(0, 14))
-        self.backend_choice = ttk.Combobox(tool_frame, textvariable=self.backend, state='readonly', values=['云端 · 豆包二遍识别', '本地 · CPU 对照'])
-        self.backend_choice.pack(anchor='w', pady=(0, 14))
+        # Internal controller widgets, with no audio-test window or user entry point.
+        tool_frame = tk.Frame(root)
+        self.backend_choice = ttk.Combobox(tool_frame, textvariable=self.backend, state='readonly')
         self.path = tk.StringVar(value=str(ROOT / 'data/models/streaming-paraformer/test_wavs/0.wav'))
         self.entry = ttk.Entry(tool_frame, textvariable=self.path)
-        self.entry.pack(fill='x')
-        row = ttk.Frame(tool_frame)
-        row.pack(fill='x', pady=10)
-        self.browse = ttk.Button(row, text='选择 WAV', command=self.choose)
-        self.browse.pack(side='left')
-        self.start_button = ttk.Button(row, text='测试所选音频文件', command=self.start)
-        self.start_button.pack(side='left', padx=10)
+        self.browse = ttk.Button(tool_frame)
+        self.start_button = ttk.Button(tool_frame)
         self.progress = ttk.Progressbar(tool_frame, maximum=100)
-        self.progress.pack(fill='x', pady=10)
-        ttk.Label(tool_frame, textvariable=self.metrics, wraplength=640).pack(anchor='w')
-        self.log = tk.Text(tool_frame, height=8, state='disabled', wrap='word', relief='flat', bg=BG, padx=10, pady=10)
-        self.log.pack(fill='both', expand=True, pady=(12, 0))
-        ttk.Label(tool_frame, text='云端测试会将音频发送至豆包并消耗额度。', foreground=MUTED).pack(anchor='w', pady=(10, 0))
+        self.log = tk.Text(tool_frame, state='disabled')
+        self._fit_devices()
         self._empty_hint()
         self.minutes_text.tag_configure('empty', foreground=MUTED)
         self.set_text(self.minutes_text, '专注讨论，纪要稍后就绪。\n\n结束录音后，将根据完整转写生成会议纪要。')
@@ -260,16 +244,19 @@ class Demo:
 
     def _empty_hint(self):
         self.transcript.tag_configure('empty', foreground='#9298B3')
-        self.set_text(self.transcript, '准备好，开始一场清晰的讨论。\n\n点击左侧“开始录音”，讲话内容将在这里持续显示。')
+        self.set_text(self.transcript, '准备好，开始一场清晰的讨论。\n\n点击下方“开始录音”，讲话内容将在这里持续显示。')
         self.transcript.tag_add('empty', '1.0', 'end')
 
     def follow_latest(self):
         if self.follow.get():
             self.transcript.see('end')
 
-    def open_tools(self):
-        self.tools.deiconify()
-        self.tools.lift()
+    def _fit_devices(self):
+        self.root.update_idletasks()
+        required = self.device_card.body.winfo_reqheight() + 2*self.device_card.padding + 8
+        self.device_card.configure(height=required)
+        minimum = required + 145 + 12 + 82 + self.header.winfo_reqheight() + self.recording_controls.winfo_reqheight() + 48
+        self.root.minsize(1040, max(780, minimum))
 
     def animate(self):
         busy = self.running or self.summary_running
@@ -326,10 +313,10 @@ class Demo:
         self.mic_choice.configure(values=[d['name'] for d in self.microphones])
         self.mic_choice.current(0)
         if online:
-            self.system_row.pack(fill='x', before=self.auto_checkbox)
+            self.system_row.pack(fill='x')
         else:
             self.system_row.pack_forget()
-        self.device_card.configure(height=430 if online else 320)
+        self._fit_devices()
 
     def set_text(self, widget, text, append=False):
         if not append and getattr(widget, '_last_text', None) == text:
