@@ -13,8 +13,8 @@ if __name__ == '__main__':
         import sherpa_onnx
         import imageio_ffmpeg
         import tkinter as tk
-        from meeting_agent.paths import ROOT, ASSETS_DIR
-        from meeting_agent.ui import Demo
+        from paths import ROOT, ASSETS_DIR
+        from ui import Demo
         root = tk.Tk()
         root.withdraw()
         app = Demo(root)
@@ -25,4 +25,4 @@ if __name__ == '__main__':
                   'ffmpeg': Path(imageio_ffmpeg.get_ffmpeg_exe()).is_file()}
         (ROOT / 'self-check.json').write_text(json.dumps(report), encoding='utf-8')
     else:
-        runpy.run_module('meeting_agent.ui', run_name='__main__')
+        runpy.run_module('ui', run_name='__main__')

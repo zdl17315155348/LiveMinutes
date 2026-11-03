@@ -1,1 +1,0 @@
-"""Windows local meeting assistant."""

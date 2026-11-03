@@ -7,13 +7,13 @@ ROOT = Path(__file__).resolve().parent.parent
 if sys.platform != 'win32':
     raise SystemExit('Build this Windows application on Windows.')
 subprocess.run([sys.executable, str(ROOT / 'scripts/make_icons.py')], check=True)
-command = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--windowed', '--onedir',
+command = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--windowed', '--onedir',
            '--name', 'LiveMinutes', '--paths', str(ROOT),
            '--distpath', str(ROOT / 'dist'), '--workpath', str(ROOT / 'build'),
            '--specpath', str(ROOT / 'build'),
            '--icon', str(ROOT / 'assets/liveminutes.ico'),
            '--add-data', str(ROOT / 'assets') + ';assets']
-for module in ('meeting_agent', 'imageio_ffmpeg', 'pywebrtc_audio', 'pyaudiowpatch', 'soxr', 'sherpa_onnx'):
+for module in ('domain', 'application', 'adapters', 'bootstrap', 'imageio_ffmpeg', 'pywebrtc_audio', 'pyaudiowpatch', 'soxr', 'sherpa_onnx'):
     command += ['--collect-all', module]
 # Conda-backed Python keeps these native runtime dependencies outside DLLs/.
 for name in ('ffi.dll', 'tcl86t.dll', 'tk86t.dll'):

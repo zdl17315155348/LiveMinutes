@@ -3,12 +3,12 @@ cd /d "%~dp0"
 if not exist ".venv\Scripts\python.exe" (
   py -3.11 --version >nul 2>&1
   if not errorlevel 1 (
-    py -3.11 scripts\bootstrap.py
+    py -3.11 scripts\environment_setup.py
     goto finished
   )
   python --version >nul 2>&1
   if not errorlevel 1 (
-    python scripts\bootstrap.py
+    python scripts\environment_setup.py
     goto finished
   )
   echo Please install 64-bit Python 3.11 from https://www.python.org/downloads/windows/
@@ -16,6 +16,6 @@ if not exist ".venv\Scripts\python.exe" (
   pause
   exit /b 1
 )
-".venv\Scripts\python.exe" scripts\bootstrap.py
+".venv\Scripts\python.exe" scripts\environment_setup.py
 :finished
 if errorlevel 1 pause
